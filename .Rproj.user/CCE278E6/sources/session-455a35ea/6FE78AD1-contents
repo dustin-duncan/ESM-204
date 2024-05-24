@@ -1,0 +1,286 @@
+---
+title: "ESM 204 HW 4"
+author: "Dustin Duncan"
+format: 
+  html:
+    code-fold: true
+    toc: true
+    number-sections: true
+    embed-resources: true
+editor: visual
+execute:
+  echo: true
+  message: false
+  warning: false
+---
+
+```{r}
+#| message: false
+#| warning: false
+rm(list = ls())
+library(tidyverse)
+library(pracma)
+library(stats)
+```
+
+**Reading in Data**
+
+```{r}
+warming <- read.csv("data/warming.csv")
+```
+
+## 1. Plot damage function over a range of Delta T values from 0-6 degrees C
+
+### Damage function:
+
+$$
+\mathrm{damages = -2.05e^{12}(\triangle{T}) + 3.9e^{13}(\triangle{T^2})}
+$$
+### Implementing damage function as function and plotting 
+
+```{r}
+## Writing function to calculate the expected damages (for a given year) under different changes in temperature relative to pre-industrial period (deltaT's)
+damage <- function(deltaT){
+  damages = (-2.05*10^(12))*deltaT + (3.9*10^(13))*(deltaT^2)
+  return(tibble(dT = deltaT, damages=damages))
+}
+## Sequencing a range of deltaT values 
+temp = seq(from=0,to=6, by=1)
+
+## Testing it out an seeing if it does what I want. First value should be equivalent to second hard value term minus the first hard value term (deltaT = 1)
+test <- damage(temp)
+## Obtaining my calculation 
+value_func = test[2,]$damages
+## calculating it myself 
+value_calc = (-2.05*10^(12)) + (3.9*10^(13))
+## Subtracting the two to make sure their difference is zero
+# value_func-value_calc ## Success 
+
+## Plotting damages over a range of deltaT values 
+ggplot(test, aes(x = dT, y = damages)) + 
+  geom_point() + 
+  theme_bw() + 
+  labs(x = "Change in Temperature (C)", y = "Damages ($)") + 
+  ggtitle("Damages under Different Temperature Change Scenarios")
+```
+
+## 2. Predict damages in each year under the baseline and pulse scenarios 
+
+### Modifying Damage function to answer 2.1 and 2.2 
+
+```{r}
+## Taking a brief look at the dataframe 
+# head(warming)
+
+## Modifying my above damage function to predict changes in each year under the baseli
+damage_df <- function(df){ # Function takes df as an input
+  year = df$year # Maintaining year from the dataframe so i dont have to cbind
+  wbl = df$warming_baseline # Same with warming_baseline and warming_pulse
+  wpl = df$warming_pulse
+  
+  
+  damages_base = (-2.05*10^(12))*df$warming_baseline + (3.9*10^(13))*(df$warming_baseline^2) # Calculating damages under for each year, based off of the change from pre-industrial era (warming_baseline)
+  damages_pulse = (-2.05*10^(12))*df$warming_pulse + (3.9*10^(13))*(df$warming_pulse^2) # Calculating the same thing as above but for the pulse change from pre-industrial era (warming_pulse)
+  
+  ## Then all of these are going back into a dataframe so I should have everything I need to answer questions 2.1 and 2.2
+  return(tibble(year = year, warming_baseline = wbl, damages_base=damages_base, warming_pulse = wpl, damages_pulse = damages_pulse))
+}
+## Using my function on the warming df and storing the resulting df in test2
+test2 = damage_df(warming)
+```
+
+### 2.1 Damages over time without the pulse 
+
+```{r}
+## Just plotting damages over time without the pulse. Basic ggplot
+ggplot(test2, aes(year, damages_base)) + 
+  geom_line(size = 1, color = "red") + 
+  theme_bw() + 
+  labs(x = "Year", y = "Damages ($)") + 
+  ggtitle("Damages over Time ($) Under Baseline Warming Scenario")
+```
+
+### 2.2 Damages over time with pulse 
+
+```{r}
+## Doing the same thing as above but with the pulse 
+ggplot(test2, aes(year, damages_pulse)) + 
+  geom_line(size = 1, color = "red") + 
+  theme_bw() + 
+  labs(x = "Year", y = "Damages ($)") + 
+  ggtitle("Damages over Time ($) Under Pulse Warming Scenario")
+```
+
+### 2.3 The difference in damages over time with vs without pulse 
+
+Damages that arise from the pulse. If I take the difference between my damages_base and damages_pulse columns, that would calculate the pointwise difference in damages, but what about the overall difference in damages?
+
+```{r}
+## Creating a new column in my test2 df that is the difference between pulse and baseline damages.
+test2$difference = test2$damages_pulse-test2$damages_base
+# Wow its actually a pretty sizeable number 
+
+## Plotting it over time 
+ggplot(test2, aes(year, difference)) + 
+  geom_line(size = 1, color = "red") + 
+  theme_bw() + 
+  geom_text(aes(x = 2021, y = 20983205366), label = "2021: $20,983,205,366", size = 3, hjust = -0.1) + 
+  geom_text(aes(x = 2100, y = 277418451368), label = "2100: $277,418,451,368", size = 3, hjust = 1.1) +
+  labs(x = "Year", y = "Additional Damages from\nPulse Event ($)") + 
+  ggtitle("Damages From Pulse Event Over Time")
+```
+
+### 2.4 Damages over time that arise from the pulse per ton of CO2
+
+If the total amount of CO2 in the pulse was 35,000,000,000 tons, I can divide the total damages (difference column) from the pulse by the tons of CO2 to get damages per ton. This is assuming that each ton is associated with the same amount of damage 
+
+```{r}
+## Creating a new column in my test2 dataframe that will be the difference divided by the total damages (35 billion tons)
+test2$diff_per_ton = test2$difference/35000000000
+
+## now plotting damages over time that arise from pulse per ton of CO2
+ggplot(test2, aes(year, diff_per_ton)) + 
+  geom_line(color="red", size=1) + 
+  geom_text(aes(x = 2021, y = 1), label = "2021: $0.60/ton", size = 3, hjust = -0.3) + 
+  geom_text(aes(x = 2100, y = 8), hjust= 1.2, label = "2100: $7.93/ton", size = 3) +
+  theme_bw() + 
+  labs(x= "Year", y = "Damages/ton CO2\nfrom Pulse ($)") + 
+  ggtitle("Damages per Ton of CO2 From Pulse Event\nOver Time")
+```
+
+
+## 3. Calculate and make a plot of the SCC against discount rates from 1-8%
+
+Calculate the NPV of the damage difference...
+  What is the NPV (damage difference)?
+    Why?
+  Then it how the NPV changes with different discount rates?
+    Why?
+  How we call this process?
+  
+**Future Value**
+
+$$
+\mathrm{V_t=V_0(1+r)^t}
+$$
+
+**Present Value**
+
+$$
+\mathrm{V_0=\frac{V_t}{(1+r)^t}}
+$$
+
+```{r}
+# The difference at 2100 will be 277418451368, and it will be incurred at the year 2100. How far away is that in years?
+years = 2100-2021
+# 79 years.
+
+## Writing a function to calculate the net present value at different discount rates, and allow me to change the number of years
+pv_calc <- function(r, t){ 
+  dr = r*.01
+  rate = dr
+  year = t
+  pv = 277418451368/((1+dr)^t)
+  pv2 = 20983205366/((1+dr)^t)
+  return(tibble(pv = pv, pv2 = pv2, rate = rate, year = year))
+}
+
+## Sequencing discount rates to calculate over. Sequencing by 0.5 to get a smoother plot 
+r = seq(from=1, to = 8, by = 0.5)
+
+## Calculating present value using function with sequenced r's as discount rates (in units of %) and year 79 as the year 2100
+test3 <- pv_calc(r, 79)
+
+## Plotting 
+ggplot(test3) + 
+  geom_line( aes(x = rate, y = pv), color = "red", size = 1) + 
+  theme_bw() +
+  labs(x = "Discount Rate", y = "SCC ($)") + 
+  ggtitle("Social Cost of Carbon under Varying Discount Rates ")
+```
+
+## 4. Now suppose two possible climate policies that can be pursued 
+
+* Policy A: BAS - Either "Baseline" Warming (p=0.5), or 1.5*"Baseline" (p=0.5)
+
+* Policy B: Action - Continue under "Baseline" until 2050, then stabilize at 1.29 degrees and stay that way forever 
+
+* Society is risk neutral
+
+* Discount Rate of 2% 
+
+### Expected present value of damages up to 2100 under policy A AND B
+
+```{r}
+## Since Policy A and Policy B have unique damage functions that are different from above, I will need to re-write the damage function so as to account for them, and additionally calculate the NPV from that. (Maybe using max())
+utility <- function(df){
+  # year = df$year # Maintaining year from the dataframe so i dont have to cbind
+  wbl = df$warming_baseline # Same with warming_baseline and warming_pulse
+  wpl = df$warming_pulse
+  
+  # Calculating damages under for each year, based off of the change from pre-industrial era for policy     A (0.5 probability)
+  ## First option (a1)
+  damages_a1 = (-2.05*10^(12))*df$warming_baseline + (3.9*10^(13))*(df$warming_baseline^2) 
+  ## Second option (a2)
+  damages_a2 = 1.5*((-2.05*10^(12))*df$warming_baseline + (3.9*10^(13))*(df$warming_baseline^2))
+  
+  # Calculating damages for each year based off change for Policy B 
+  damages_b = ifelse(df$year <= 2050, # If the year is below or equal to 2050
+        (-2.05*10^(12))*df$warming_baseline+(3.9*10^(13))*(df$warming_baseline^2),
+        # Then the warming continues as it would in the baseline 
+                     (-2.05*10^(12))*1.29 + (3.9*10^(13))*(1.29^2)) 
+        # Once it hits 2050 it will stabilize and stay that way forever
+  
+  r = 0.02 ## setting discount rate 
+  year = 79 ## Setting time to calculate the present value under different policies
+  a1max = max(damages_a1) ## the maximum damages under the first possibility of policy A 
+  a2max = max(damages_a2) ## the maximum damages under the second possibility of policy A
+  bmax = max(damages_b) ## The maximum damages under Policy B
+  
+  pva1 = a1max/((1+r)^year) ## Calculating the present value of a1 with discounting in 2100
+  pva2 = a2max/((1+r)^year) ## Calculating the present value of a2 with discounting in 2100
+  pvb = bmax/((1+r)^year) ## Calculating the present value of b with discounting in 2100
+  
+  Epva = (0.5 * pva1) + (0.5 * pva2) ## Calculating the expected present value considering the probability of either circumstance in Policy A 
+  Epvb = 1 * pvb ## Calculating the expected value of Policy B
+  
+  return(tibble(pva = Epva, pvb = Epvb))
+}
+
+## Throw it in a dataframe 
+test4 <- utility(warming)
+
+## Renaming columns for Kable output
+colnames(test4) = c("Policy A", "Policy B")
+
+## Throwing it into a kable to make it pretty 
+knitr::kable(test4, align = "c", caption = "Expected Present Values of Each Policy ($)")
+
+```
+
+
+
+### Suppose Policy A costs nothing to undertake and Policy B costs X. How large could X be for it to still make economic sense to pursue Policy B instead of Policy A?
+
+**If Policy A costs nothing to undertake and Policy B costs X, I can use their Expected Net Present Values and add an X term to B to solve for**
+
+$$
+\mathrm{EV_A = EV_B + X} \\
+\mathrm{X = EV_A-EV_B}
+$$
+
+```{r}
+Evpa = test4$`Policy A`
+Evpb = test4$`Policy B`
+
+X = Evpa - Evpb
+# X 
+
+cat("X could be up to $", X, "for it to still make economic sense to pursue Policy B instead of Policy A")
+```
+
+
+## 5. How would your answer to the above change if society were risk averse? 1-2 sentences 
+
+
+

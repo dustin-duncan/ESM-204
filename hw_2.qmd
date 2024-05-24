@@ -1,0 +1,360 @@
+---
+title: "ESM 204 HW 2"
+author: "Dustin Duncan"
+format: 
+  html:
+    code-fold: true
+    toc: true
+    number-sections: true
+    embed-resources: true
+editor: visual
+execute:
+  echo: true
+  message: false
+  warning: false
+---
+```{r}
+#| message: false
+rm(list = ls())
+library(tidyverse)
+library(pracma)
+library(stats)
+```
+
+## Task 1: Draw the Marginal abatement cost curves for each district
+
+```{r}
+# First we're going to sequence the abatement units 
+A = seq(from = 0, to = 250, by = 1)
+
+# Next, were going to write a function that returns the marginal abatement cost for each firm at a given A value, and return it as a tibble so that we can plot it 
+MACC <- function(A){
+  MACC_k = 4.5*A
+  MACC_m = 4*A
+  MACC_a = 3*A
+  MACC_v = 2*A
+  return(tibble(A = A, mck = MACC_k, mcm = MACC_m, mca = MACC_a, mcv = MACC_v))
+}
+## Using function to calculate each districts marginal abatement curve
+test <- MACC(A)
+
+ggplot(data = test) + 
+  geom_line(aes(x = A, y = mck), color = "red") + 
+  geom_line(aes(x = A, y = mcm), color = "blue") + 
+  geom_line(aes(x = A, y = mca), color = "forestgreen") + 
+  geom_line(aes(x = A, y = mcv), color = "purple") +
+  geom_text(aes(x = 200, y = 1100), label = "MC: Kern", size = 3, color = "red", hjust = 0) +
+  geom_text(aes(x = 200, y = 750), label = "MC: Mojave", size = 3, color = "blue", hjust = 0) +
+  geom_text(aes(x = 200, y = 550), label = "MC: Antelope", size = 3, color = "forestgreen", hjust = 0) +
+  geom_text(aes(x = 200, y = 310), label = "MC: Ventura", size = 3, color = "purple", hjust = 0) +
+  theme_bw() + 
+  labs(y = "Marginal Abatement Cost\n($/acre foot)", x = "Abatement (acre feet of groundwater)") + 
+  
+  ggtitle("Marginal Abatement Cost Curve for Each Water District") + 
+  theme(axis.title = element_text(size = 12, face = "bold"))
+```
+
+## Task 2: Derive each districts demand curve 
+
+### Deriving formulae for each district
+
+$$
+\begin{align}
+\mathrm{if: A = Q_0 -Q} \\
+\mathrm{MACC_k = 4.5A = 4.5(Q_0 -Q) = P} \\
+\mathrm{Q_{0,k}=150AF} \\
+\mathrm{675 - 4.5Q=P_k} \\ 
+\mathrm{150 - \frac{P}{4.5}=Q_k} \\
+\\~\\
+\mathrm{MACC_m = 4A = 4(Q_0 -Q) = P} \\
+\mathrm{Q_{0,m}=140AF} \\
+\mathrm{560 - 4Q=P_m} \\ 
+\mathrm{140 - \frac{P}{4}=Q_m} \\
+\\~\\
+\mathrm{MACC_a = 3A = 3(Q_0 -Q) = P} \\
+\mathrm{Q_{0,a}=220AF} \\
+\mathrm{660 - 3Q=P_a} \\ 
+\mathrm{220 - \frac{P}{3}=Q_a} \\
+\\~\\
+\mathrm{MACC_v = 2A = 2(Q_0 -Q) = P} \\
+\mathrm{Q_{0,v}=250AF} \\
+\mathrm{500 - 2Q=P_v} \\ 
+\mathrm{250 - \frac{P}{2}=Q_v} 
+\end{align}
+$$
+
+### Calculating demand curves for each district and plotting 
+
+```{r}
+# Writing function to calculate groundwater demand at each price
+demand_gw <- function(P){
+  Qk = 150 - (P*(1/4.5))
+  Qk = ifelse(Qk <= 0, 0, Qk)
+  Qm = 140 - (P*(1/4))
+  Qm = ifelse(Qm <= 0, 0, Qm)
+  Qa = 220 - (P*(1/3))
+  Qa = ifelse(Qa <= 0, 0, Qa)
+  Qv = 250 - (P*(1/2))
+  Qv = ifelse(Qv <= 0, 0, Qv)
+  return(tibble(P = P, Qk = Qk, Qm = Qm, Qa = Qa, Qv = Qv))
+}
+# Simulating price to slightly higher than the highest price a district is willing to pay 
+P = seq(from = 0, to = 700, by = 1)
+# Using function to create a dataframe of Price and quantity demanded from each district
+gw_demand_test <- demand_gw(P)
+
+# Since price was above the max each district was willing to pay, separating each districts demand curve and subsetting to include only Q >= 0
+demand_k <- tibble(Qk = gw_demand_test$Qk, P = gw_demand_test$P) %>% 
+  filter(P <= 675 )
+demand_m <- tibble(Qm = gw_demand_test$Qm, P = gw_demand_test$P) %>% 
+  filter(P <= 560 )
+demand_a <- tibble(Qa = gw_demand_test$Qa, P = gw_demand_test$P) %>% 
+  filter(P <= 660 )
+demand_v <- tibble(Qv = gw_demand_test$Qv, P = gw_demand_test$P) %>% 
+  filter(P <= 500 )
+
+# Writing function to calculate the price each firm is willing to pay for each unit of groundwater 
+mwtp_gw <- function(Q){
+  Pk = 675 - 4.5*Q
+  Pm = 560 - 4*Q
+  Pa = 660 - 3*Q
+  Pv = 500- 2*Q
+  return(tibble(Q = Q, Pk = Pk, Pm=Pm, Pa=Pa,Pv=Pv))
+}
+
+# Using function to calculate the price each firm is willing to pay for the first unit of groundwater 
+first_unit_price <- mwtp_gw(1)
+# head(first_unit_price)
+
+# Plotting each districts demand curve against each other with first unit cost indicated for each district
+ggplot() + 
+  geom_line(data = demand_k, aes(x = Qk, y = P), color = "red") +
+  geom_line(data = demand_m, aes(x = Qm, y = P), color = "blue") +
+  geom_line(data = demand_a, aes(x = Qa, y = P), color = "forestgreen") +
+  geom_line(data = demand_v, aes(x = Qv, y = P), color = "purple") +
+  geom_text(aes(x = 125, y = 125), label = "Q: Kern", size = 3, color = "red", hjust = 0) +
+  geom_text(aes(x = 75, y = 125), label = "Q: Mojave", size = 3, color = "blue", hjust = 0) +
+  geom_text(aes(x = 100, y = 395), label = "Q: Antelope", size = 3, color = "forestgreen", hjust = 0) +
+  geom_text(aes(x = 200, y = 150), label = "Q: Ventura", size = 3, color = "purple", hjust = 0) +
+  geom_text(aes(x = 10, y = 670.5), label = "P1_k: 670.5", size = 3, color = "red", hjust = 0) +
+  geom_text(aes(x = 0, y = 590), label = "P1_m: 556", size = 3, color = "blue", hjust = 0, angle = -38) +
+  geom_text(aes(x = 25, y = 600), label = "P1_a: 657", size = 3, color = "forestgreen", hjust = 0) +
+  geom_text(aes(x = 0, y = 480), label = "P1_v: 498", size = 3, color = "purple", hjust = 0,angle = -25 ) +
+  theme_bw() + 
+  labs(x = "Quantity (acre feet)", y = "Price ($/acre foot)") + 
+  ggtitle("Marginal Demand Curve for Each District") + 
+  theme(axis.title = element_text(face = "bold", size = 12))
+```
+
+**The district that is willing to pay the most for the first unit of groundwater is Kern district. They would be willing to pay $670.5 for the first acre foot of groundwater** 
+
+## Task 3: Analyze 3 alternative policies for reducing water use
+
+### 3A: Cap without trade scenario
+
+#### a1) Each water district is reduced by the same amount to meet the 500AF cap
+
+$$
+\begin{align}
+\mathrm{\bar{Q}_{Agg}=760AF~|~CAP = 500AF} \\
+\mathrm{Total~Abatement=260} \\
+\mathrm{District~Abatement=260/4=65} \\
+\mathrm{\bar{Q}_k =150AF,~A=65: Q_{k}^{pol}= 85AF} \\
+\mathrm{\bar{Q}_m =140AF,~A=65: Q_{m}^{pol}=75AF} \\
+\mathrm{\bar{Q}_a =220AF,~A=65: Q_{a}^{pol}=155AF} \\
+\mathrm{\bar{Q}_v =250AF,~A=65: Q_{v}^{pol}=185AF} 
+\end{align}
+$$
+
+#### a2) Marginal cost of last unit of abatement 
+
+
+```{r}
+#| message: false
+# Adding on to previous MACC function to allow for different abatements even though they're the same 
+MACC_district_new <- function(Ak1, Am1, Aa1, Av1){
+  MACC_k = 4.5*Ak1
+  MACC_m = 4*Am1
+  MACC_a = 3*Aa1
+  MACC_v = 2*Av1
+  return(tibble(District = c("Kern", "Mojave", "Antelope", "Ventura"), "Total Abatement" = c(Ak1, Am1, Aa1, Av1), "MAC of Last unit" = c(MACC_k, MACC_m, MACC_a, MACC_v)))
+}
+# using function to calculate the marginal cost of the last unit of abatement for each district
+cap_no_trade_new <- MACC_district_new(Ak1 = 65, Am1 = 65, Aa1 = 65, Av1 = 65)
+
+# using kable to create a table of the MAC. values and total abatement by district
+knitr::kable(cap_no_trade_new, align = "c", caption = "MAC of Last Unit by District")
+```
+
+#### a3) Total cost of abatement for each district to comply
+
+```{r}
+# The total cost of abatement for each district to comply would be the price that they were willing to pay for the *after abatement* cost of their last acre foot of groundwater, times the quantity they had to abate, divided by two
+
+# writing function to calculate the total cost of abatement for each district, where the input is the final quantity they're allowed to demand under the cap, as well as allows me to calculate the TAC for when there is trade allowed
+total_cost_a <- function(Qbark, Qpolk, Qbarm, Qpolm, Qbara, Qpola, Qbarv, Qpolv){
+  P_k = 675 - 4.5*Qpolk
+  TAC_k = (P_k*(Qbark - Qpolk))/2
+  P_m = 560 - 4*Qpolm
+  TAC_m = (P_m*(Qbarm - Qpolm))/2
+  P_a = 660 - 3*Qpola
+  TAC_a = (P_a*(Qbara - Qpola))/2
+  P_v = 500 - 2*Qpolv
+  TAC_v = (P_v*(Qbarv - Qpolv))/2
+  return(tibble(District = c("Kern", "Mojave", "Antelope", "Ventura"), TAC = c(TAC_k, TAC_m, TAC_a, TAC_v )))
+}
+# Using function to calculate each district's total abatement cost based on their baseline quantity compared to their policy quantity
+TAC_capnotrade <- total_cost_a(150, 85, 140, 75, 220, 155, 250, 185)
+
+# Throwing it into kable so that its easy
+knitr::kable(TAC_capnotrade, align = "c", caption = "TAC for Each District without Trade ($)")
+```
+
+### 3B: Cap and Trade Scenario
+
+#### b1/2) Calculate the quantity of groundwater used by each district after trade, at the new equilibrium trading price 
+
+To calculate the quantity of groundwater used by each district after trade, we first would calculate the aggregate demand curve by summing each unique demand curve 
+
+$$
+\begin{align}
+\mathrm{Q_k = 150 - \frac{P}{4.5}} \\
+\mathrm{Q_m = 140 - \frac{P}{4}} \\ 
+\mathrm{Q_a = 220 - \frac{P}{3}} \\
+\mathrm{Q_v = 250 - \frac{P}{2}} \\
+\mathrm{Q_{agg} = 760 - 1.305556P} \\ 
+\text{Rearrange to obtain equilibrium price} \\
+\mathrm{P = -0.7659572Q_{cap} + 582.1275} \\
+\text{Solve for total quantity of 500AF} \\
+\mathrm{P = -0.7659572(500) + 582.1275} \\
+\mathrm{P^{*} = 199.1489}
+\end{align}
+$$
+
+After obtaining the equilibrium price of the aggregate demand for groundwater, we can use this price to calculate each districts quantity traded under the CAP and trade program.
+```{r}
+## Using earlier demand function to calculate each firm's equilibrium quantity demanded at the new Pstar of 199.1489
+quantity_with_trade <- demand_gw(199.1489)
+## using sum to check my quantities above and ensure that they add to the 500 AF cap 
+# sum(quantity_with_trade[1, 2:5]) # Sum to 500. Good
+
+# renaming columns in my new dataframe to reflect the metrics being measured 
+colnames <- c("Eq. Price", "Q: Kern", "Q: Mojave", "Q: Antelope", "Q: Ventura")
+colnames(quantity_with_trade) = colnames
+
+knitr::kable(quantity_with_trade, align = "c", caption = "Quantity Used by Each District with Trade")
+
+```
+
+#### b3) Total abatement cost for each district
+
+```{r}
+# Using function created above to calculate each districts total cost of abatement given their baseline quantity demanded and the new traded quantity they will use 
+TAC_capandtrade <- total_cost_a(150, 105.7447, 140, 90.21277, 220, 153.617, 250, 150.4255)
+
+# putting it into a table 
+knitr::kable(TAC_capandtrade, align = "c", caption = "TAC for Each District with Trade ($)")
+
+# ## This code was used to double check my answer above. This removes each districts individual demand fomula and replaces the TAC calculation price with the equilibrium price 
+# total_cost_a.2 <- function(Qbark, Qpolk, Qbarm, Qpolm, Qbara, Qpola, Qbarv, Qpolv, Pstar){
+#   
+#   TAC_k = (Pstar*(Qbark - Qpolk))/2
+#   
+#   TAC_m = (Pstar*(Qbarm - Qpolm))/2
+#   
+#   TAC_a = (Pstar*(Qbara - Qpola))/2
+#   
+#   TAC_v = (Pstar*(Qbarv - Qpolv))/2
+#   return(tibble(District = c("Kern", "Mojave", "Antelope", "Ventura"), TAC = c(TAC_k, TAC_m, TAC_a, TAC_v )))
+# }
+# ## Using formula to calculate the TAC for each distrct at the new equilibrium price and with trade 
+# TAC_capandtrade.2 <- total_cost_a.2(150, 105.7447, 140, 90.21277, 220, 153.617, 250, 150.4255, 199.1489)
+# knitr::kable(TAC_capandtrade.2, aling = "c", caption = "TAC for Each District with Trade")
+# ## Numbers are the same. Checks out 
+
+```
+
+#### b4) Total Abatement cost for each, net of any permit sales or purchases
+
+```{r}
+# Writing a function that uses each districts demand with trade, their cap without trade, and the equilibrium trading price to calculate how much they buy or sell and the price paid at the equilibrium trading price 
+net_abatement <- function(Qpolk, Qpolm, Qpola, Qpolv, TACk, TACm, TACa, TACv){
+  diffk = Qpolk - 125
+  transferk = diffk*199.1489
+  netk = TACk + transferk
+  
+  diffm = Qpolm - 125
+  transferm = diffm*199.1489
+  netm = TACm + transferm
+  
+  diffa = Qpola - 125
+  transfera = diffa*199.1489
+  neta = TACa + transfera
+  
+  diffv = Qpolv - 125
+  transferv = diffv*199.1489
+  netv = TACv + transferv
+  return(tibble(District = c("Kern", "Mojave", "Antelope", "Ventura"), netTAC = c(netk, netm, neta, netv)))
+}
+# Using function and previous quantities/TAC's to calculate net cost of abatement for each district with sales and pruchases
+net_abatement_cost <- net_abatement(quantity_with_trade[1, 2], quantity_with_trade[1, 3], quantity_with_trade[1, 4], quantity_with_trade[1, 5], TAC_capandtrade[1, 2], TAC_capandtrade[2, 2], TAC_capandtrade[3, 2], TAC_capandtrade[4, 2])
+
+knitr::kable(net_abatement_cost, align = "c", caption="TAC by district Net of any sales of Purchases ($)")
+
+```
+
+### 3C: Abatement Tax scenario 
+
+#### c1) How much would each district abate?
+
+```{r}
+# If a single tax were imposed that would reduce the total quantity of groundwater demanded to 500AF, then the tax amount would be the same as the above equilibrium price for groundwater in this market, which would be t* = 199.1489. We can update the demand_gw function to calculate the quantity traded under the new tax as well as the total abatement for each district under the new tax
+demand_gw_tax <- function(P){
+  Qk = 150 - (P*(1/4.5))
+  Qk = ifelse(Qk <= 0, 0, Qk)
+  Ak = 150-Qk
+  Qm = 140 - (P*(1/4))
+  Qm = ifelse(Qm <= 0, 0, Qm)
+  Am = 140-Qm
+  Qa = 220 - (P*(1/3))
+  Qa = ifelse(Qa <= 0, 0, Qa)
+  Aa = 220-Qa
+  Qv = 250 - (P*(1/2))
+  Qv = ifelse(Qv <= 0, 0, Qv)
+  Av = 250-Qv
+  return(tibble(District = c("Kern", "Mojave", "Antelope", "Ventura"), Q_pol = c(Qk, Qm, Qa, Qv), Abatement = c(Ak, Am, Aa, Av)))
+}
+## Using function to calculate the new quantity demanded by each firm 
+quantity_with_tax <- demand_gw_tax(199.1489)
+## Testing to see if it adds up to 500
+# sum(quantity_with_tax$Q_demand) # It does 
+knitr::kable(quantity_with_tax, align = "c", caption = "Abatement of Each District with Tax")
+
+```
+
+#### c2) Total cost of abatement for each district to comply 
+
+```{r}
+# We can use the amount each district abated to calculate their cost by using the total_cost_a function we created earlier 
+abatement_cost_tax <- total_cost_a(150, 105.74469, 140, 90.21277, 220, 153.61703, 250, 150.42555)
+# Throwing it into a kable to make it look nice
+knitr::kable(abatement_cost_tax, align = "c", caption = "TAC by district with Tax ($)")
+```
+
+#### c3) How much tax revenue is generated? 
+
+```{r}
+# If we're looking at the aggregate demand curve and measuring the total quantity consumed under the new tax (500AF), and multiplying that by the tax cost, then the tax revenue would just be 500*199.1489
+TR = 500*199.1489
+print("The tax revenue generated under this new tax program for groundwater would be $99,574.45")
+```
+
+## Task 4: Make a recommendation for each of the districts for an intervention to pursue. 
+
+```{r}
+sum(TAC_capnotrade$TAC)
+sum(abatement_cost_tax$TAC) 
+sum(TAC_capandtrade$TAC)
+```
+
+**If the districts were to support a program that would allow for the lowest total abatement cost, then I would recommend that they pursue the cap with trade intervention. This would allow for distribution of abatement costs among the districts, allowing each of them to either buy or sell accordingly to still meet the requirement, but distribute costs among themselves relative to their individual groundwater demands.**  

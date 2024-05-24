@@ -1,0 +1,3 @@
+"0","# Plotting the dataframe I just created with Y as y axis and X as x axis"
+"0","ggplot(data = answer_c, aes(x = X, y = Y)) + "
+"0","  geom_point()"

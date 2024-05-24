@@ -1,0 +1,8 @@
+"0","dac_sd_df <- read.csv(""data/HW3_data.csv"") %>% "
+"0","  janitor::clean_names()"
+"0",""
+"0","## Price in $ and Q is in number of EV's "
+"0",""
+"0","# Current EV price without intervention is 50,000 per vehicle"
+"0","# There is no intervention initially in the market "
+"0","# marginal cost of producing an EV is linear and has a price intercept of zero "

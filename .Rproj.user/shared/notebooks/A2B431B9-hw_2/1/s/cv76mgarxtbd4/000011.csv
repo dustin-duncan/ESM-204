@@ -1,0 +1,4 @@
+"0","# We can use the amount each district abated to calculate their cost by using the total_cost_a function we created earlier "
+"0","abatement_cost_tax <- total_cost_a(150, 105.74469, 140, 90.21277, 220, 153.61703, 250, 150.42555)"
+"0","# Throwing it into a kable to make it look nice"
+"0","knitr::kable(abatement_cost_tax, align = ""c"", caption = ""TAC by district with Tax ($)"")"

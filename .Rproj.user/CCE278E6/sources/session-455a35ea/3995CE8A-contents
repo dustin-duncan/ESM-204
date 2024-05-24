@@ -1,0 +1,407 @@
+---
+title: "ESM 204 HW 1"
+author: "Dustin Duncan"
+format: 
+  html:
+    code-fold: show
+    toc: true
+    number-sections: true
+    embed-resources: true
+editor: visual
+execute:
+  echo: true
+  message: false
+  warning: false
+---
+
+```{r}
+rm(list = ls())
+library(tidyverse)
+library(pracma)
+library(stats)
+```
+
+
+## Task 1 
+
+### a)
+
+```{r}
+# Using seq() function to count from 0, to 10 by increments of 0.5
+a1 <- seq(0, 10, by = 0.5)
+print(a1)
+```
+
+### b)
+
+```{r}
+# Writing custom function with X, a, and b inputs and y as an output. This function solves for Y
+b1 <- function(X, a, b){
+  Y = a*X + b
+  return(Y)
+}
+answer <- b1(5, 3, 10)
+print(answer)
+```
+
+### c)
+
+```{r}
+# Creating dataframe to evaluate the function from above. It has a fixed at 3, b fixed at 10, and X as a sequence from 0 to 10
+df1 <- tibble(a = rep(3, 11), b = rep(10, 11), X = seq(from = 0, to = 10, by = 1))
+
+# Writing a function with a dataframe as its input, which will calculate Y from the X column
+c1 <- function(df){
+  Y = 3*df$X + 10
+  return(Y)
+}
+
+# Appending my previous dataframe by creating a column called Y that is the result of evaluating the above equation at each value of X
+answer_c <- df1 %>% 
+  mutate(Y = c1(df1))
+
+# Printing my dataframe output
+print.data.frame(answer_c)
+
+```
+
+###  d) 
+
+```{r}
+# Plotting the dataframe I just created with Y as y axis and X as x axis
+ggplot(data = answer_c, aes(x = X, y = Y)) + 
+  geom_point()
+```
+
+### e)
+
+```{r}
+# i. Writing function for first curve
+
+fun1 <- function(X, a_one, b_one){
+  Y <- a_one*X + b_one
+  return(Y)
+}
+# ii. Writing function for second curve
+fun2 <- function(X, a_two, b_two){
+  Y <- a_two*X + b_two
+  return(Y)
+}
+# iii. Writing function that takes the same inputs from the first two functions and subtracts the ouput of fun2 from the output of fun1 at the values, assigning it to the value Z
+fun3 <- function(X, a_one, b_one, a_two, b_two){
+  Z <- fun1(X, a_one, b_one) - fun2(X, a_two, b_two)
+  return(Z)
+}
+
+# iv. Using fzero to solve for where the curves intersect, calling it X_star, then plugging that into my function to solve for Y_star
+X_star <- fzero(function(X) fun3(X, a_one = -2, b_one = 100, a_two = 3, b_two = 0), 20)$x
+
+Y_star <- fun1(20, -2, 100)
+
+print(c("Value of X where the curves intersect:", X_star, "Value of Y where the curves intersect:", Y_star))
+```
+
+### f) 
+
+**Using algebra to confirm that my answer above is correct:**
+
+$$
+\begin{aligned}
+\mathrm{Y = a_{1}*X + b_{1}} 
+\\ 
+\mathrm{Y = a_{2}*X + b_{2}} 
+\\ 
+~
+\\
+\mathrm{a_{1}*X + b_{1} = a_{2}*X + b_{2}} 
+\\ 
+\mathrm{-2X + 100 = 3X} 
+\\ 
+\mathrm{-5X = -100} 
+\\ 
+\mathrm{X^{*}=20} 
+\\ 
+~
+\\
+\mathrm{Y^{*} = a_{1}*X^{*} + b_{1}}
+\\
+\mathrm{Y^{*} = -2(20)+100} 
+\\ 
+\mathrm{Y^{*}=-40+100} 
+\\
+\mathrm{Y^{*} = 60}
+\end{aligned}
+$$
+
+## Task 2 
+
+### a)
+
+```{r}
+# Writing demand curve function for PB
+demand <- function(Q){
+  P = 500 - 0.1*Q
+  return(P)
+}
+# Writing supply curve function for PB
+supply <- function(Q){
+  P = 5 + 0.05*Q
+  return(P)
+}
+
+# Writing equilibrium function for PB
+equilibrium <- function(Q){
+  E <- demand(Q) - supply(Q)
+  return(E)
+}
+# Finding the equilibrium quantity with fzero and plugging it in to supply function to find the price at that quantity
+quantity <- fzero(function(Q) equilibrium(Q), 1000)$x
+
+price <- supply(3300)
+
+print(c("Eq. Quantity of new traded peanut butter in jars:", quantity, "Eq. Value of new traded peanut butter in credits/jar:", price))
+```
+### b)
+
+```{r}
+# It wants the producer and consumer surplus. Done by calculating the area of the triangle 
+# Consumer Surplus calculation
+CS <- (0.5)*((3300) * (500-170))
+
+# Producer surplus calculation
+PS <- (0.5)*((3300) * (165))
+
+print(c("The consumer surplus at equilibrium in the peanut butter market:", CS, "The producer surplus at equilibrium in the peanut butter market:", PS))
+```
+
+### c) 
+
+```{r}
+# Creating function to calculate the aggregate demand 
+# quantity at a given price, with the output being just quantity, 
+# accounting for below-zero values 
+aggregate_demand <- function(P){
+  Q1 <- 200 - 0.5*P
+  Q2 <- 5000 - 10*P
+  Q_out = ifelse(Q1 <= 0, 0, Q1)
+  Q = Q_out + Q2
+  return(Q)
+}
+
+# Creating function to calculate the aggregate demand quantity at a 
+# given price, with the output being the aggregate quantity, and the 
+# quantities of both individual consumers, accounting for below-zero 
+# values, for plotting purposes
+aggregate_demand_table <- function(P){
+  Q1 <- 200 - 0.5*P
+  Q2 <- 5000 - 10*P
+  Q_out = ifelse(Q1 <= 0, 0, Q1)
+  Q = Q_out + Q2
+  return(tibble(Q = Q, Q1 = Q_out, Q2 = Q2))
+}
+
+# Writing second supply function which calculates quantity supplied at 
+# price, accounting for below-zero values 
+supply2 <- function(P){
+  Q1 = 20*P - 100
+  Q = ifelse(Q1 <= 0, 0, Q1)
+  return(Q)
+}
+
+# Creating function to apply to fzero to calculate where they intersect
+aggregate <- function(P){
+  E <- aggregate_demand(P) - supply2(P)
+  return(E)
+}
+
+# Finding equilibrium price at which supply and aggregate traded peanut butter quantities are equal
+aggregate_eq_price <- fzero(function(P) aggregate(P), 100)$x
+
+# plugging aggregate equilibrium price into aggregate demand formula to 
+# calculate demand at that price
+aggregate_eq_quantity <- aggregate_demand(aggregate_eq_price)
+
+# sequencing price to both plot and check my work 
+P <- seq(from = 0, to = 500, by = 1)
+
+# Putting both demand curves and their agg. value into df, as well as 
+# simulated price and supply at each price using my functions, for plotting purposes
+new_demand_df <- aggregate_demand_table(P) %>% 
+  mutate(price = P,
+         supply = supply2(P))
+
+# Creating plot of my work
+ggplot(data = new_demand_df) + 
+  geom_line(aes(x = Q1, y = price), color = "blue2") + 
+  geom_line(aes(x = Q2, y = price), color = "lightblue") +
+  geom_line(aes(x = Q, y = price), color = "purple")  +
+  geom_line(aes(x = supply, y = price), color = "forestgreen") + 
+  geom_segment(aes(x = 3375, xend = 3375, y = 0, yend = 173.77), color="red", linetype = "dotted") +
+  geom_segment(aes(x = 0, xend = 3375, y = 173.77, yend = 173.77), color="red", linetype = "dotted") +
+  geom_text(aes(x = 1, y = 300), label = "New Demand", size = 3, color = "blue", hjust = -0.2) +
+  geom_text(aes(x = 3500, y = 10), label = "Old Demand", size = 3, color = "lightblue", hjust = 0) +
+  geom_text(aes(x = 5100, y = 10), label = "Aggregate Demand", size = 3, color = "purple", hjust = -0.2) +
+  geom_text(aes(x = 4800, y = 300), label = "Supply", size = 3, color = "forestgreen", hjust = -0.2) +
+  geom_text(aes(x = 3375, y = 173), label = "P* = 173.7, Q* = 3375", size = 3, color = "red", hjust = -0.2) +
+  theme_bw() +
+  labs(y = "Price", x = "Quantity") + 
+  ggtitle("Supply and Demand Curve for Peanut Butter Market")
+
+# using values to answer the overall question 
+print(c("Eq. Quantity of aggregate traded peanut butter in jars:", aggregate_eq_quantity, "Eq. Price of aggregate traded peanut butter in credits/jar:", aggregate_eq_price))
+
+```
+
+### d)
+
+**If there were an externality associated with traded peanut butter jars that generated carbon emissions, this would be a negative externality, which would indicate that either suppliers or consumers needed to incur the extra cost. If this cost were to fall on the consumers, raising the cost of peanut butter jars, then it would potentially lower the amount of traded peanut butter jars, due to the increased price at the same quantity.**
+
+## Task 3
+
+**a)** Old cars are often fuel inefficient. The supply of inefficient old cars on the used car market is given by: $$P = 200 + 0.2Q^{1.2} $$
+(where P is \$/car and Q is the quantity of cars). The state of California offers a “cash for clunkers” program, where they will pay $2,000 for any inefficient old car. Answer the following questions:
+
+### i. Use R to determine how many cars will be sold back to the state under this program (you can round to the nearest integer).
+
+```{r}
+# Writing function to calculate price at a supply Q for clunker
+clunker_supply <- function(Q, I1 = 200, b1=0.2, e1=1.2) {
+  P = I1 + b1*(Q^e1)
+  return(P)
+}
+
+# Writing function to calculate price at a demand Q for clunker
+clunker_demand <- function(Q, I2 = 2000, b2=0, e2=1){
+  P = I2 - b2*(Q^e2)
+  return(P)
+}
+
+# Writing equilibrium function
+eq <- function(Q, I1, b1, e1, I2, b2, e2){
+  E = clunker_supply(Q, I1, b1, e1) - clunker_demand(Q, I2, b2, e2)
+  return(E)
+}
+
+# Using fzero to calculate where eq. function crosses zero 
+eq_quantity_low <- fzero(function(Q) eq(Q, I1=200, b1=0.2, e1=1.2, I2=2000, b2=0, e2=1), 3500)$x
+
+# Adding one and calculating a second value that I can use for elasticity
+eq_quantity_high <- fzero(function(Q) eq(Q, I1=200, b1=0.2, e1=1.2, I2=2001, b2=0, e2=1), 3500)$x
+
+# Sequencing Q to create a table and plot 
+Q <- seq(from = 0, 2000, by = 1)
+
+# Creating table called Table to plot my data from above
+table <- tibble(demand_p = clunker_demand(Q), supply_p = clunker_supply(Q), quantity = Q)
+
+# Plotting
+ggplot(data = table) + 
+  geom_line(aes(x = quantity, y = demand_p), color = "purple") + 
+  geom_line(aes(x = quantity, y = supply_p), color = "forestgreen") + 
+  geom_segment(aes(x = 1973, xend = 1973, y = 0, yend = 2000), color="red", linetype = "dotted") +
+  geom_text(aes(x = 1973, y = 1500), label = "Q* = 1973.34", size = 3, color = "red", hjust = 1.1) +
+  geom_text(aes(x = 250, y = 1900), label = "Demand", size = 3, color = "purple") +
+  geom_text(aes(x = 250, y = 500), label = "Supply", size = 3, color = "forestgreen") +
+  theme_bw() +
+  labs(x = "Quantity", y = "Price", title = "Supply and Demand Curve for Clunkers for Cash")
+
+print(c("The equilibrium quantity for the amount of cars that will be sold back to the state is:", eq_quantity_low))
+```
+
+### ii. Use R to calculate the elasticity of supply of inefficient cars, evaluated at the market equilibrium.
+
+Elasticity of supply 
+$$
+\mathrm{E_{p}^{S} = \frac{\%\Delta{Q}}{\%\Delta{P}}}
+$$
+At equilibrium, the quantity supplied changes from 1973 to 1974, and the price of supply changes from 1999.627 to 2000.722
+
+```{r}
+elasticity_supply <- (1/((eq_quantity_low+eq_quantity_high)/2))/(1.095/((1999.627+2000.722)/2))
+
+print(c("The elasticity of supply at the equilibrium price for clunker cars is:", elasticity_supply), digits = 4)
+```
+
+### iii. What are the benefits of this policy to owners of old cars?
+
+```{r}
+clunker_benefit <- 2000*(eq_quantity_low) - integral(clunker_supply, xmin=0, xmax = eq_quantity_low)
+print(c("The benefit of this policy to owners of old cars amounts to:", clunker_benefit))
+```
+
+
+### iv. What is the cost of this program to taxpayers (who fund the government payments)?
+
+```{r}
+taxpayer_cost <- 2000*eq_quantity_low
+print(c("The cost of this policy to taxpayers is:", taxpayer_cost))
+```
+
+
+**b)** Suppose the marginal benefit to society of removing old cars (this benefit comes from the
+environmental and health effects of removing fuel inefficient cars from the road) is given by: 
+$$MB = 1000 – .01Q$$ 
+(where Q is the number of cars bought back under the program).
+
+### i. Use R to find the socially optimal number of cars to remove (again, you can round to the nearest integer).
+
+```{r}
+# Writing function to calculate the Marginal benefit at a given quantity of clunkers
+marginal_benefit <- function(Q){
+  MB = 1000 - 0.01*(Q^1.2)
+  return(MB)
+}
+
+# Writing function to calculate the supply price at a given quantity of clunkers 
+clunker_supply <- function(Q) {
+  P = 200 + 0.2*(Q^1.2)
+  return(P)
+}
+
+# Writing function to solve for where the two intercept 
+socially_opt <- function(Q){
+  E = clunker_supply(Q) - marginal_benefit(Q)
+  return(E)
+}
+
+# Using fzero to calculate the socially optimal number of cars to remove from the road
+opt_quant <- pracma::fzero(socially_opt, c(0, 10000))$x
+
+print(c("The socially optimal number of cars to remove is:", opt_quant))
+
+# Creating a dataframe for plotting purposes 
+mb_df <- tibble(quantity = Q, mb = marginal_benefit(Q), demand_p = table$demand_p, supply = table$supply_p)
+
+# Plotting 
+ggplot(mb_df) +
+  geom_line(aes(x = quantity, y = mb), color = "purple") +
+  geom_line(aes(x = quantity, y = supply), color = "forestgreen") + 
+  geom_segment(aes(x = 963, xend = 963, y = 0, yend = 961), color="red", linetype = "dotted") +
+  geom_segment(aes(x = 0, xend = 963, y = 961, yend = 961), color="red", linetype = "dotted") +
+  geom_text(aes(x = 1000, y = 740), label = "P* = 961.9, Q* = 963.95", size = 3, color = "red", hjust = -0.05) +
+  geom_text(aes(x = 250, y = 1150), label = "Demand", size = 3, color = "purple") +
+  geom_text(aes(x = 500, y = 450), label = "Supply", size = 3, color = "forestgreen") +
+  theme_bw() +
+  labs(x = "Quantity", y = "Price", title = "Supply and Marginal Benefit Curve for Clunkers for Cash")
+```
+
+### ii. Use R to find the optimal “cash for clunkers” price (which may differ from the current price of $2,000).
+
+```{r}
+# opt_quant is going to be my input to my price function for cars to calculate the optimal cash for clunkers price  
+print(c("The optimal Cash for Clunkers, price is:",clunker_supply(opt_quant)))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,6 @@
+"0","## Doing the same thing as above but with the pulse "
+"0","ggplot(test2, aes(year, damages_pulse)) + "
+"0","  geom_line(size = 1, color = ""red"") + "
+"0","  theme_bw() + "
+"0","  labs(x = ""Year"", y = ""Damages ($)"") + "
+"0","  ggtitle(""Damages over Time ($) Under Pulse Warming Scenario"")"

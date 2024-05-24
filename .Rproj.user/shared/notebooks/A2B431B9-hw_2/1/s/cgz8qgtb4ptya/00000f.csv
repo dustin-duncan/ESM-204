@@ -1,0 +1,4 @@
+"0","# Using function created above to calculate each districts total cost of abatement given their baseline quantity demanded and the new traded quantity they will use "
+"0","TAC_capandtrade <- total_cost_a(150, 105.7447, 140, 90.21277, 220, 153.617, 250, 150.4255)"
+"0","# putting it into a table "
+"0","knitr::kable(TAC_capandtrade, aling = ""c"", caption = ""TAC for Each District with Trade"")"
