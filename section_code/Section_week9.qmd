@@ -1,0 +1,116 @@
+---
+title: "ESM 204 Section Exercise Week 9"
+author: "Dustin Duncan"
+format: 
+  html:
+    code-fold: true
+    toc: true
+    number-sections: true
+    embed-resources: true
+editor: visual
+execute:
+  echo: true
+  message: false
+  warning: false
+---
+
+```{r}
+#| message: false
+#| warning: false
+rm(list = ls())
+library(tidyverse)
+library(pracma)
+library(stats)
+```
+
+## Risk Preferences:
+
+### Risk neutral:
+
+$$
+\mathrm{E[U(x)] = U(E[x])} \\
+\mathrm{𝑝_1𝑈(𝑥_1) + 𝑝_2𝑈(𝑥_2) = 𝑈(𝑝_1𝑥_1 + 𝑝_2𝑥_2)}
+$$ 
+
+**Indifferent between the risky payout versus the expected value with certainty**
+
+### Risk Averse: If U(x) is concave or
+
+$$
+\mathrm{E[U(x)] < U(E[x])} \\
+\mathrm{𝑝_1𝑈(𝑥_1) + 𝑝_2𝑈 (𝑥_2) < 𝑈(𝑝_1𝑥_1 + 𝑝_2𝑥_2)}
+$$ 
+
+**Prefer having the expected value with certainty versus taking the gamble**
+
+### Risk Loving: If U(x) is concave or
+
+$$
+\mathrm{E[U(x)] > U(E[x])} \\
+\mathrm{𝑝_1𝑈(𝑥_1) + 𝑝_2𝑈 (𝑥_2) > 𝑈(𝑝_1𝑥_1 + 𝑝_2𝑥_2)}
+$$
+
+**Prefer taking the risky payout versus the expected value with certainty**
+
+## Exercise 1
+
+Consider a gamble:
+
+-   pays x_1 = 0 with p = 0.75
+
+-   pays x_2 = 2 with p = 0.25
+
+-   Utility given by:
+
+$$
+\mathrm{U(x)=2x-0.5x^{2}}
+$$
+
+-   
+
+    (a) Graph the utility function with wealth on the horizontal axis and utility on the vertical axis
+
+Where x is wealth:
+
+```{r}
+
+utility = function(x){
+  U = 2*x - 0.5*(x^2)
+  return(tibble(x=x, U=U))
+}
+
+x = seq(from=0,to=150,by=1)
+
+test = utility(x)
+
+ggplot(test, aes(x, U)) + 
+  geom_point()
+```
+
+-   
+
+    (b) Is this utility function linear, convex or concave?
+
+-   
+
+    (c) Add the utility of having x1 = 0 and x2 = 2
+
+-   
+
+    (d) What is the expected value of the gamble E\[x\]?
+
+-   
+
+    (e) What is the utility of having the expected value of the gamble with certainty U(E(x))
+
+-   
+
+    (f) What is the expected utility of the gamble, E(U(x))?
+
+-   
+
+    (g) plot (e) and (f) on your graph
+
+-   
+
+    (h) Is an individual with this utility function risk neutral, risk averse or risk seeking? Demonstrate this on your graph. How could you tell from part (a) alone?
